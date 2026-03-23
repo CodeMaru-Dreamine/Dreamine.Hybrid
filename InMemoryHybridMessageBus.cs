@@ -18,7 +18,10 @@ namespace Dreamine.Hybrid.Messaging
         public void Publish<TMessage>(TMessage message) where TMessage : IHybridMessage
         {
             if (message is null) throw new ArgumentNullException(nameof(message));
-            if (_handlers.TryGetValue(typeof(TMessage), out var list) == false) return;
+            if (!_handlers.TryGetValue(typeof(TMessage), out var list))
+            {
+                return;
+            }
 
             Delegate[] snapshot;
             lock (list) snapshot = list.ToArray();
@@ -38,7 +41,11 @@ namespace Dreamine.Hybrid.Messaging
 
             return new Subscription(() =>
             {
-                if (_handlers.TryGetValue(typeof(TMessage), out var target) == false) return;
+                if (!_handlers.TryGetValue(typeof(TMessage), out var target))
+                {
+                    return;
+                }
+
                 lock (target) target.Remove(handler);
             });
         }
