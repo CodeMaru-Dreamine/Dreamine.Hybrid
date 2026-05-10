@@ -7,7 +7,7 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 
 		<PackageId>Dreamine.Hybrid</PackageId>
-		<Version>1.0.1</Version>
+		<Version>1.0.2</Version>
 		<Authors>Dreamine Core Team</Authors>
 		<Company>Dreamine</Company>
 		<Description>Core runtime and abstraction layer for Dreamine Hybrid applications, providing shared infrastructure for WPF and embedded UI integration.</Description>
