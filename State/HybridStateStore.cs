@@ -1,10 +1,10 @@
-﻿using Dreamine.Hybrid.Interfaces;
+using Dreamine.Hybrid.Interfaces;
 using System;
 
 namespace Dreamine.Hybrid.State
 {
     /// <summary>
-    /// \brief Provides an in-memory shared state store for hybrid applications.
+    /// Provides an in-memory shared state store for hybrid applications.
     /// </summary>
     /// <typeparam name="TState">The state type.</typeparam>
     public sealed class HybridStateStore<TState> : IHybridStateStore<TState>
@@ -13,7 +13,7 @@ namespace Dreamine.Hybrid.State
         private TState _state;
 
         /// <summary>
-        /// \brief Initializes a new instance of the <see cref="HybridStateStore{TState}"/> class.
+        /// Initializes a new instance of the <see cref="HybridStateStore{TState}"/> class.
         /// </summary>
         /// <param name="initialState">The initial state.</param>
         public HybridStateStore(TState initialState)
@@ -23,6 +23,18 @@ namespace Dreamine.Hybrid.State
 
         /// <inheritdoc />
         public event EventHandler<HybridStateChangedEventArgs<TState>>? StateChanged;
+
+        /// <inheritdoc />
+        public IDisposable Subscribe(EventHandler<HybridStateChangedEventArgs<TState>> handler)
+        {
+            if (handler is null)
+            {
+                throw new ArgumentNullException(nameof(handler));
+            }
+
+            StateChanged += handler;
+            return new StateSubscription(this, handler);
+        }
 
         /// <inheritdoc />
         public TState State
@@ -67,12 +79,38 @@ namespace Dreamine.Hybrid.State
         }
 
         /// <summary>
-        /// \brief Raises the state changed event.
+        /// Raises the state changed event.
         /// </summary>
         /// <param name="state">The changed state.</param>
         private void OnStateChanged(TState state)
         {
             StateChanged?.Invoke(this, new HybridStateChangedEventArgs<TState>(state));
+        }
+
+        private sealed class StateSubscription : IDisposable
+        {
+            private readonly HybridStateStore<TState> _store;
+            private EventHandler<HybridStateChangedEventArgs<TState>>? _handler;
+
+            public StateSubscription(
+                HybridStateStore<TState> store,
+                EventHandler<HybridStateChangedEventArgs<TState>> handler)
+            {
+                _store = store;
+                _handler = handler;
+            }
+
+            public void Dispose()
+            {
+                EventHandler<HybridStateChangedEventArgs<TState>>? handler = _handler;
+                if (handler is null)
+                {
+                    return;
+                }
+
+                _handler = null;
+                _store.StateChanged -= handler;
+            }
         }
     }
 }

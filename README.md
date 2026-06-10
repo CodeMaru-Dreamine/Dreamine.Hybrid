@@ -17,8 +17,9 @@ It does not host WebView2 or Blazor directly. WPF-specific hosting is provided b
 - `IHybridStateStore`
 - `HybridMessageBase`
 - `InMemoryHybridMessageBus`
-- `InMemoryHybridStateStore`
-- Dashboard sample messages such as `DashboardActionRequestedMessage` and `CounterChangedMessage`
+- `HybridStateStore`
+
+App-specific messages should live in the application or sample project, not in this library package. Derive them from `HybridMessageBase` or implement `IHybridMessage`.
 
 ## Package Boundary
 

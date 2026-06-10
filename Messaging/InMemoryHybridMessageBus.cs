@@ -1,4 +1,4 @@
-﻿using Dreamine.Hybrid.Interfaces;
+using Dreamine.Hybrid.Interfaces;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -9,11 +9,11 @@ using System.Threading.Tasks;
 namespace Dreamine.Hybrid.Messaging
 {
     /// <summary>
-    /// \brief Provides an in-memory implementation of <see cref="IHybridMessageBus"/>.
+    /// Provides an in-memory implementation of <see cref="IHybridMessageBus"/>.
     /// </summary>
     public sealed class InMemoryHybridMessageBus : IHybridMessageBus
     {
-        private readonly ConcurrentDictionary<Type, List<Subscription>> _subscriptions = new();
+        private readonly ConcurrentDictionary<Type, SubscriptionBucket> _subscriptions = new();
 
         /// <inheritdoc />
         public async Task PublishAsync<TMessage>(
@@ -26,17 +26,12 @@ namespace Dreamine.Hybrid.Messaging
                 throw new ArgumentNullException(nameof(message));
             }
 
-            if (!_subscriptions.TryGetValue(typeof(TMessage), out List<Subscription>? subscriptions))
+            if (!_subscriptions.TryGetValue(typeof(TMessage), out SubscriptionBucket? subscriptions))
             {
                 return;
             }
 
-            Subscription[] snapshot;
-
-            lock (subscriptions)
-            {
-                snapshot = subscriptions.ToArray();
-            }
+            Subscription[] snapshot = subscriptions.CreateSnapshot();
 
             foreach (Subscription subscription in snapshot)
             {
@@ -107,22 +102,26 @@ namespace Dreamine.Hybrid.Messaging
             }
 
             Type messageType = typeof(TMessage);
-            List<Subscription> subscriptions = _subscriptions.GetOrAdd(
-                messageType,
-                _ => new List<Subscription>());
-
             var subscription = new Subscription(messageType, handler, Unsubscribe);
 
-            lock (subscriptions)
+            while (true)
             {
-                subscriptions.Add(subscription);
-            }
+                SubscriptionBucket subscriptions = _subscriptions.GetOrAdd(
+                    messageType,
+                    _ => new SubscriptionBucket());
 
-            return subscription;
+                if (subscriptions.TryAdd(subscription))
+                {
+                    return subscription;
+                }
+
+                _subscriptions.TryRemove(
+                    new KeyValuePair<Type, SubscriptionBucket>(messageType, subscriptions));
+            }
         }
 
         /// <summary>
-        /// \brief Removes the specified subscription.
+        /// Removes the specified subscription.
         /// </summary>
         /// <param name="subscription">The subscription to remove.</param>
         private void Unsubscribe(Subscription subscription)
@@ -132,24 +131,72 @@ namespace Dreamine.Hybrid.Messaging
                 return;
             }
 
-            if (!_subscriptions.TryGetValue(subscription.MessageType, out List<Subscription>? subscriptions))
+            if (!_subscriptions.TryGetValue(subscription.MessageType, out SubscriptionBucket? subscriptions))
             {
                 return;
             }
 
-            lock (subscriptions)
-            {
-                subscriptions.Remove(subscription);
+            subscriptions.Remove(subscription);
 
-                if (subscriptions.Count == 0)
+            if (subscriptions.TryCloseIfEmpty())
+            {
+                _subscriptions.TryRemove(
+                    new KeyValuePair<Type, SubscriptionBucket>(subscription.MessageType, subscriptions));
+            }
+        }
+
+        private sealed class SubscriptionBucket
+        {
+            private readonly List<Subscription> _subscriptions = new();
+            private bool _closed;
+
+            public bool TryAdd(Subscription subscription)
+            {
+                lock (_subscriptions)
                 {
-                    _subscriptions.TryRemove(subscription.MessageType, out _);
+                    if (_closed)
+                    {
+                        return false;
+                    }
+
+                    _subscriptions.Add(subscription);
+                    return true;
+                }
+            }
+
+            public Subscription[] CreateSnapshot()
+            {
+                lock (_subscriptions)
+                {
+                    return _subscriptions.ToArray();
+                }
+            }
+
+            public void Remove(Subscription subscription)
+            {
+                lock (_subscriptions)
+                {
+                    _subscriptions.Remove(subscription);
+                }
+            }
+
+            public bool TryCloseIfEmpty()
+            {
+                lock (_subscriptions)
+                {
+                    if (_subscriptions.Count != 0)
+                    {
+                        return false;
+                    }
+
+                    _closed = true;
+                    return true;
                 }
             }
         }
 
         /// <summary>
-        /// \brief Represents a message subscription.
+        /// Represents a message subscription.
         /// </summary>
         private sealed class Subscription : IDisposable
         {
@@ -157,7 +204,7 @@ namespace Dreamine.Hybrid.Messaging
             private bool _disposed;
 
             /// <summary>
-            /// \brief Initializes a new instance of the <see cref="Subscription"/> class.
+            /// Initializes a new instance of the <see cref="Subscription"/> class.
             /// </summary>
             /// <param name="messageType">The subscribed message type.</param>
             /// <param name="handler">The message handler.</param>
@@ -173,17 +220,17 @@ namespace Dreamine.Hybrid.Messaging
             }
 
             /// <summary>
-            /// \brief Gets the subscribed message type.
+            /// Gets the subscribed message type.
             /// </summary>
             public Type MessageType { get; }
 
             /// <summary>
-            /// \brief Gets the message handler.
+            /// Gets the message handler.
             /// </summary>
             public object Handler { get; }
 
             /// <summary>
-            /// \brief Gets a value indicating whether this subscription has been disposed.
+            /// Gets a value indicating whether this subscription has been disposed.
             /// </summary>
             public bool IsDisposed => _disposed;
 

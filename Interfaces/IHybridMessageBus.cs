@@ -1,16 +1,16 @@
-﻿using System;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace Dreamine.Hybrid.Interfaces
 {
     /// <summary>
-    /// \brief Provides a message bus for communication between hybrid application layers.
+    /// Provides a message bus for communication between hybrid application layers.
     /// </summary>
     public interface IHybridMessageBus
     {
         /// <summary>
-        /// \brief Publishes the specified message.
+        /// Publishes the specified message.
         /// </summary>
         /// <typeparam name="TMessage">The message type.</typeparam>
         /// <param name="message">The message instance.</param>
@@ -22,7 +22,7 @@ namespace Dreamine.Hybrid.Interfaces
             where TMessage : IHybridMessage;
 
         /// <summary>
-        /// \brief Subscribes a handler to the specified message type.
+        /// Subscribes a handler to the specified message type.
         /// </summary>
         /// <typeparam name="TMessage">The message type.</typeparam>
         /// <param name="handler">The message handler.</param>
