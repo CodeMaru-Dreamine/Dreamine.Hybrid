@@ -14,14 +14,19 @@ namespace Dreamine.Hybrid.Messaging
     public sealed class InMemoryHybridMessageBus : IHybridMessageBus
     {
         private readonly ConcurrentDictionary<Type, SubscriptionBucket> _subscriptions = new();
+        private volatile IHybridMessageBusExceptionHandler _exceptionHandler =
+            NullHybridMessageBusExceptionHandler.Instance;
 
         /// <summary>
         /// Gets or sets the handler invoked when a subscriber throws an unexpected exception.
         /// Defaults to <see cref="NullHybridMessageBusExceptionHandler.Instance"/> (no-op).
         /// Assign a custom handler to wire in logging without coupling this assembly to a logger.
         /// </summary>
-        public IHybridMessageBusExceptionHandler ExceptionHandler { get; set; } =
-            NullHybridMessageBusExceptionHandler.Instance;
+        public IHybridMessageBusExceptionHandler ExceptionHandler
+        {
+            get => _exceptionHandler;
+            set => _exceptionHandler = value ?? throw new ArgumentNullException(nameof(value));
+        }
 
         /// <inheritdoc />
         public async Task PublishAsync<TMessage>(
@@ -91,7 +96,7 @@ namespace Dreamine.Hybrid.Messaging
                     // Delegate to the configured handler so callers can observe the failure
                     // (e.g. by wiring a logging-backed handler) without coupling this assembly
                     // to a concrete logger. Default handler is a no-op.
-                    ExceptionHandler.Handle(ex, typeof(TMessage));
+                    _exceptionHandler.Handle(ex, typeof(TMessage));
                 }
             }
         }
