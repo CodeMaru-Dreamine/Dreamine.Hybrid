@@ -15,6 +15,14 @@ namespace Dreamine.Hybrid.Messaging
     {
         private readonly ConcurrentDictionary<Type, SubscriptionBucket> _subscriptions = new();
 
+        /// <summary>
+        /// Gets or sets the handler invoked when a subscriber throws an unexpected exception.
+        /// Defaults to <see cref="NullHybridMessageBusExceptionHandler.Instance"/> (no-op).
+        /// Assign a custom handler to wire in logging without coupling this assembly to a logger.
+        /// </summary>
+        public IHybridMessageBusExceptionHandler ExceptionHandler { get; set; } =
+            NullHybridMessageBusExceptionHandler.Instance;
+
         /// <inheritdoc />
         public async Task PublishAsync<TMessage>(
             TMessage message,
@@ -77,16 +85,13 @@ namespace Dreamine.Hybrid.Messaging
                      */
                     subscription.Dispose();
                 }
-                catch
+                catch (Exception ex)
                 {
-                    /*
-                     * TODO:
-                     * 이후 Dreamine.Logging 연동 시 여기서 로그를 남긴다.
-                     *
-                     * 현재 정책:
-                     * - 메시지 버스는 fire-and-dispatch 성격이다.
-                     * - 개별 구독자 예외는 전체 메시지 전파를 막지 않는다.
-                     */
+                    // Individual subscriber failure must not stop delivery to remaining subscribers.
+                    // Delegate to the configured handler so callers can observe the failure
+                    // (e.g. by wiring a logging-backed handler) without coupling this assembly
+                    // to a concrete logger. Default handler is a no-op.
+                    ExceptionHandler.Handle(ex, typeof(TMessage));
                 }
             }
         }

@@ -51,12 +51,19 @@ namespace Dreamine.Hybrid.State
         /// <inheritdoc />
         public void SetState(TState state)
         {
+            TState snapshot;
+
             lock (_syncRoot)
             {
                 _state = state;
+                // Capture the snapshot inside the lock so the event argument always
+                // reflects the stored value at the time of assignment, even when
+                // concurrent SetState calls race. Subscribers receive the state that
+                // was actually committed, not a stale caller-held reference.
+                snapshot = _state;
             }
 
-            OnStateChanged(state);
+            OnStateChanged(snapshot);
         }
 
         /// <inheritdoc />
@@ -67,15 +74,15 @@ namespace Dreamine.Hybrid.State
                 throw new ArgumentNullException(nameof(updater));
             }
 
-            TState newState;
+            TState snapshot;
 
             lock (_syncRoot)
             {
-                newState = updater(_state);
-                _state = newState;
+                snapshot = updater(_state);
+                _state = snapshot;
             }
 
-            OnStateChanged(newState);
+            OnStateChanged(snapshot);
         }
 
         /// <summary>
