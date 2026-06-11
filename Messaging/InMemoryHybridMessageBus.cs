@@ -206,7 +206,7 @@ namespace Dreamine.Hybrid.Messaging
         private sealed class Subscription : IDisposable
         {
             private readonly Action<Subscription> _unsubscribe;
-            private bool _disposed;
+            private volatile bool _disposed;
 
             /// <summary>
             /// Initializes a new instance of the <see cref="Subscription"/> class.

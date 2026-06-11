@@ -1,5 +1,6 @@
 using Dreamine.Hybrid.Interfaces;
 using System;
+using System.Threading;
 
 namespace Dreamine.Hybrid.State
 {
@@ -109,13 +110,14 @@ namespace Dreamine.Hybrid.State
 
             public void Dispose()
             {
-                EventHandler<HybridStateChangedEventArgs<TState>>? handler = _handler;
+                // Interlocked.Exchange ensures the handler is cleared and unsubscribed
+                // exactly once even when Dispose is called concurrently.
+                var handler = Interlocked.Exchange(ref _handler, null);
                 if (handler is null)
                 {
                     return;
                 }
 
-                _handler = null;
                 _store.StateChanged -= handler;
             }
         }
