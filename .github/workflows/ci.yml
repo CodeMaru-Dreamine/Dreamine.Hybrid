@@ -39,6 +39,14 @@ jobs:
           dotnet tool install --global dotnet-sonarscanner --version $env:SONAR_SCANNER_VERSION
           dotnet tool install --global dotnet-coverage
 
+      - name: Disable conflicting automatic analysis
+        if: env.SONAR_TOKEN != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        shell: pwsh
+        run: |
+          $basicToken = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("$($env:SONAR_TOKEN):"))
+          $headers = @{ Accept = 'application/json'; Authorization = "Basic $basicToken" }
+          Invoke-RestMethod -Method Post -Uri 'https://sonarcloud.io/api/autoscan/activation' -Headers $headers -ContentType 'application/x-www-form-urlencoded' -Body @{ projectKey = $env:SONAR_PROJECT_KEY; enable = 'false' } | Out-Null
+
       - name: Restore
         run: dotnet restore tests/Dreamine.Hybrid.Tests/Dreamine.Hybrid.Tests.csproj
 
