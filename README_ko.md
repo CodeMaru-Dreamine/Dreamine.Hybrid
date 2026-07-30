@@ -1,5 +1,18 @@
 # Dreamine.Hybrid
 
+[![CI](https://github.com/CodeMaru-Dreamine/Dreamine.Hybrid/actions/workflows/ci.yml/badge.svg)](https://github.com/CodeMaru-Dreamine/Dreamine.Hybrid/actions/workflows/ci.yml)
+[![Quality Gate](https://sonarcloud.io/api/project_badges/measure?project=CodeMaru-Dreamine_Dreamine.Hybrid&metric=alert_status)](https://sonarcloud.io/summary/new_code?id=CodeMaru-Dreamine_Dreamine.Hybrid)
+[![Security](https://sonarcloud.io/api/project_badges/measure?project=CodeMaru-Dreamine_Dreamine.Hybrid&metric=security_rating)](https://sonarcloud.io/summary/new_code?id=CodeMaru-Dreamine_Dreamine.Hybrid)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=CodeMaru-Dreamine_Dreamine.Hybrid&metric=coverage)](https://sonarcloud.io/summary/new_code?id=CodeMaru-Dreamine_Dreamine.Hybrid)
+[![라이선스](https://img.shields.io/github/license/CodeMaru-Dreamine/Dreamine.Hybrid)](LICENSE)
+[![.NET](https://img.shields.io/badge/.NET-8-512BD4)](https://dotnet.microsoft.com/)
+[![NuGet](https://img.shields.io/nuget/v/Dreamine.Hybrid)](https://www.nuget.org/packages/Dreamine.Hybrid)
+[![다운로드](https://img.shields.io/nuget/dt/Dreamine.Hybrid)](https://www.nuget.org/packages/Dreamine.Hybrid)
+[![문서](https://img.shields.io/badge/문서-dreamine.kr-2496ED)](https://dreamine.kr)
+[![가이드](https://img.shields.io/badge/가이드-dreamine.kr-2496ED)](https://dreamine.kr)
+[![플레이그라운드](https://img.shields.io/badge/플레이그라운드-dreamine.kr-7B2CBF)](https://dreamine.kr)
+[![도서](https://img.shields.io/badge/도서-실전%20MVVM%20아키텍처-111111)](https://dreamine.kr)
+
 Dreamine 하이브리드 애플리케이션을 위한 코어 런타임 및 추상화 패키지입니다.
 
 [➡️ English Version](README.md)
