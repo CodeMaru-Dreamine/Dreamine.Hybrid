@@ -1,0 +1,87 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  SONAR_PROJECT_KEY: CodeMaru-Dreamine_Dreamine.Hybrid
+  SONAR_ORGANIZATION: codemaru-dreamine
+  SONAR_PROJECT_VERSION: 1.0.3
+  SONAR_SCANNER_VERSION: 11.2.1
+  SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+jobs:
+  build-test-analyze:
+    name: Build, test, package, and analyze
+    runs-on: windows-2025
+    steps:
+      - name: Check out package
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          fetch-depth: 0
+
+      - name: Set up .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Install analysis tools
+        if: env.SONAR_TOKEN != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        shell: pwsh
+        run: |
+          dotnet tool install --global dotnet-sonarscanner --version $env:SONAR_SCANNER_VERSION
+          dotnet tool install --global dotnet-coverage
+
+      - name: Disable conflicting automatic analysis
+        if: env.SONAR_TOKEN != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        shell: pwsh
+        run: |
+          $basicToken = [Convert]::ToBase64String([Text.Encoding]::ASCII.GetBytes("$($env:SONAR_TOKEN):"))
+          $headers = @{ Accept = 'application/json'; Authorization = "Basic $basicToken" }
+          Invoke-RestMethod -Method Post -Uri 'https://sonarcloud.io/api/autoscan/activation' -Headers $headers -ContentType 'application/x-www-form-urlencoded' -Body @{ projectKey = $env:SONAR_PROJECT_KEY; enable = 'false' } | Out-Null
+
+      - name: Restore
+        run: dotnet restore tests/Dreamine.Hybrid.Tests/Dreamine.Hybrid.Tests.csproj
+
+      - name: Begin Sonar analysis
+        if: env.SONAR_TOKEN != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        shell: pwsh
+        run: >
+          dotnet sonarscanner begin
+          /k:"$env:SONAR_PROJECT_KEY"
+          /o:"$env:SONAR_ORGANIZATION"
+          /v:"$env:SONAR_PROJECT_VERSION"
+          /d:sonar.token="$env:SONAR_TOKEN"
+          /d:sonar.scm.provider=git
+          /d:sonar.sourceEncoding=UTF-8
+          /d:sonar.cs.vscoveragexml.reportsPaths="$env:RUNNER_TEMP\TestResults\coverage.xml"
+          /d:sonar.cs.vstest.reportsPaths="$env:RUNNER_TEMP\TestResults\**\*.trx"
+          /d:sonar.exclusions="**/bin/**,**/obj/**,**/TestResults/**,**/*.png,**/*.ico"
+          /d:sonar.coverage.exclusions="**/tests/**"
+          /d:sonar.cpd.exclusions="**/tests/**"
+
+      - name: Build and test
+        shell: pwsh
+        run: |
+          $project = 'tests/Dreamine.Hybrid.Tests/Dreamine.Hybrid.Tests.csproj'
+          if ($env:SONAR_TOKEN -ne '' -and ('${{ github.event_name }}' -ne 'pull_request' -or '${{ github.event.pull_request.head.repo.full_name }}' -eq '${{ github.repository }}')) {
+            $command = "dotnet test $project --no-restore --configuration Release -m:1 -p:GeneratePackageOnBuild=false --results-directory $env:RUNNER_TEMP\TestResults --logger `"trx;LogFileName=tests.trx`""
+            dotnet-coverage collect $command -f xml -o "$env:RUNNER_TEMP\TestResults\coverage.xml"
+          }
+          else {
+            dotnet test $project --no-restore --configuration Release -m:1 -p:GeneratePackageOnBuild=false --results-directory "$env:RUNNER_TEMP\TestResults" --logger "trx;LogFileName=tests.trx"
+          }
+
+      - name: Pack
+        run: dotnet pack Dreamine.Hybrid.csproj --no-restore --configuration Release --output "${{ runner.temp }}\packages"
+
+      - name: End Sonar analysis
+        if: success() && env.SONAR_TOKEN != '' && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository)
+        run: dotnet sonarscanner end /d:sonar.token="$env:SONAR_TOKEN"
